@@ -23,14 +23,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Mencari folder proyek Gradle secara otomatis (root repo atau subfolder),
-      # jadi build tetap jalan walaupun file proyek ada di dalam folder.
+      # Mencari folder proyek Gradle otomatis (root repo, subfolder, atau di dalam file .zip
+      # yang ikut ter-push), jadi build tetap jalan walaupun struktur repo berbeda.
       - name: Locate Gradle project
         id: proj
         run: |
-          f=$(find . -maxdepth 4 \( -name settings.gradle.kts -o -name settings.gradle \) -not -path './.git/*' | head -n 1)
+          find_settings() {
+            find "$1" -maxdepth 4 \( -name settings.gradle.kts -o -name settings.gradle \) -not -path '*/.git/*' | head -n 1
+          }
+          f=$(find_settings .)
           if [ -z "$f" ]; then
-            echo "::error::settings.gradle.kts tidak ditemukan di repo. Pastikan isi NetChan.zip (settings.gradle.kts, build.gradle.kts, folder app/) ikut di-push."
+            echo "settings.gradle(.kts) tidak ada di repo, mencoba mengekstrak file .zip..."
+            find . -maxdepth 2 -name '*.zip' -not -path './.git/*' | while read -r z; do
+              echo "Ekstrak: $z"
+              unzip -q -o "$z" -d _extracted || true
+            done
+            [ -d _extracted ] && f=$(find_settings _extracted)
+          fi
+          if [ -z "$f" ]; then
+            echo "::error::settings.gradle.kts tidak ditemukan. Ekstrak NetChan.zip lalu push ISI foldernya (settings.gradle.kts, build.gradle.kts, folder app/)."
             echo "Isi repo:"; find . -maxdepth 3 -not -path './.git/*' | head -n 60
             exit 1
           fi
