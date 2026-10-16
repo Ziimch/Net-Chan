@@ -7,18 +7,27 @@ Dibuat dengan Kotlin dan Jetpack Compose, tampilan bertema biru dengan backgroun
 
 | Tab | Fungsi |
 |---|---|
-| **Info** | Tipe koneksi, IP, gateway, DNS, MTU, Private DNS, detail Wi-Fi (SSID, BSSID, RSSI, frekuensi, kanal, standar Wi-Fi), operator dan jenis jaringan seluler, IP publik, ISP, ASN |
+| **Info** | Tipe koneksi, kemampuan jaringan (validated, metered, captive portal), IP, rute, gateway, DNS, MTU, Private DNS, IPv6, DHCP, detail Wi-Fi (SSID, BSSID, RSSI, frekuensi, kanal, lebar kanal, standar Wi-Fi), antarmuka jaringan, IP publik IPv4/IPv6, ISP, ASN |
+| **Seluler** | Operator, status SIM, jenis jaringan, dan data sel/BTS: Cell ID, PCI, TAC, band, EARFCN/NRARFCN, RSRP, RSRQ, SINR, CQI, Timing Advance (LTE, 5G NR, WCDMA, GSM) beserta sel tetangga |
 | **Ping** | Min / rata-rata / max, jitter, standar deviasi, packet loss, dan penilaian kualitas |
 | **Traceroute** | Daftar hop sampai ke tujuan |
-| **Speed Test** | Latensi, jitter, download, dan upload (4 koneksi paralel, server Cloudflare) |
-| **DNS** | Waktu resolusi, record A/AAAA, reverse DNS |
+| **Speed Test** | Latensi, jitter, download, upload, dan **bufferbloat** (latensi saat jaringan penuh), hasil otomatis masuk Riwayat |
+| **DNS** | Klien DNS mentah: record A, AAAA, MX, NS, TXT, CNAME, SOA ke server DNS mana pun, plus **benchmark DNS** (Google, Cloudflare, Quad9, OpenDNS, AdGuard, dan DNS jaringan) |
+| **Web/SSL** | Waktu DNS/TCP/TLS, versi TLS, cipher, rantai sertifikat (penerbit, masa berlaku, SAN), header HTTP, dan header keamanan |
 | **Port Scan** | Port umum, daftar port, atau rentang (misalnya `1-1024`) |
-| **LAN Scan** | Mencari perangkat aktif di subnet /24 |
+| **LAN Scan** | Perangkat aktif di subnet /24, nama host, penanda gateway, dan port umum yang terbuka |
+| **Discovery** | Mencari router, Smart TV, speaker, printer, dan perangkat UPnP lewat SSDP beserta nama dan model |
 | **Wi-Fi** | Daftar AP sekitar, kekuatan sinyal, keamanan, kepadatan kanal 2.4 GHz, saran kanal terbaik |
+| **Sinyal Live** | Pantau kekuatan sinyal Wi-Fi atau seluler tiap detik untuk mencari titik terbaik |
 | **Cek Layanan** | Waktu DNS dan respons HTTP ke situs populer |
 | **Monitor** | Kecepatan unduh dan unggah real-time |
+| **IP Lookup** | Negara, kota, ASN, ISP, zona waktu, dan reverse DNS untuk IP atau domain apa pun |
+| **Banner Grab** | Mengintip banner layanan (SSH, HTTP, FTP, dll.) di port yang terbuka |
+| **Wake-on-LAN** | Membangunkan perangkat sendiri di LAN lewat magic packet |
+| **Subnet Calc** | Menghitung network, broadcast, range host, dan subnet mask dari CIDR |
+| **Riwayat** | Daftar hasil Speed Test sebelumnya beserta rata-rata dan hasil terbaik |
 
-Hasil setiap tes bisa disalin lewat tombol **Salin**.
+Hasil setiap tes bisa disalin lewat tombol **Salin** atau dikirim lewat tombol **Bagikan**.
 
 ## Instalasi
 
@@ -36,13 +45,16 @@ APK ditandatangani dengan debug key, jadi Play Protect bisa menampilkan peringat
 | Lokasi | Membaca SSID dan memindai Wi-Fi (diwajibkan Android, lokasi tidak disimpan atau dikirim) |
 | Phone State | Menampilkan jenis jaringan seluler (4G/5G) |
 | Wi-Fi state | Membaca info dan memindai Wi-Fi |
+| Multicast Wi-Fi | Menemukan perangkat UPnP (SSDP) di jaringan lokal |
 
 ## Koneksi keluar
 
 Aplikasi hanya menghubungi layanan berikut saat fitur terkait dipakai:
 
 - `speed.cloudflare.com` untuk Speed Test
-- `ipwho.is` untuk info IP publik
+- `ipwho.is` untuk info IP publik dan IP Lookup
+- `api.ipify.org` dan `api6.ipify.org` untuk IPv4/IPv6 publik
+- Server DNS yang dipilih (UDP port 53) untuk tab DNS
 - Host atau situs yang kamu masukkan sendiri, serta daftar situs di tab Cek Layanan
 
 Tidak ada akun, iklan, atau pengumpulan data.
@@ -84,8 +96,11 @@ gradle assembleRelease   # app/build/outputs/apk/release/
         ├── AndroidManifest.xml
         ├── java/com/netlab/app/
         │   ├── MainActivity.kt   (UI Compose)
-        │   ├── NetTools.kt       (ping, traceroute, DNS, port scan, speed test, dll.)
-        │   └── NetInfo.kt        (info jaringan, IP publik, scan Wi-Fi)
+        │   ├── NetTools.kt       (ping, traceroute, port scan, LAN scan, speed test, dll.)
+        │   ├── NetInfo.kt        (info jaringan, seluler, Wi-Fi, sinyal live)
+        │   ├── DnsClient.kt      (klien DNS mentah dan benchmark)
+        │   ├── Inspector.kt      (analisis SSL/HTTP, IP lookup, SSDP)
+        │   └── History.kt        (riwayat speed test)
         └── res/                  (ikon dan background)
 ```
 
@@ -96,6 +111,9 @@ gradle assembleRelease   # app/build/outputs/apk/release/
 - Android membatasi scan Wi-Fi sekitar 4 kali per 2 menit.
 - LAN Scan mungkin tidak mendeteksi perangkat yang memblokir semua koneksi.
 - Speed Test memakai kuota data.
+- Data sel (BTS) butuh izin Lokasi dan Phone State, dan sebagian ponsel menyembunyikan sel tetangga.
+- Tab DNS memakai UDP port 53, jadi bisa gagal di jaringan yang memblokirnya.
+- Discovery (SSDP) tidak menemukan perangkat yang tidak mendukung UPnP atau jika router memblokir multicast.
 
 ## Penggunaan yang bertanggung jawab
 
