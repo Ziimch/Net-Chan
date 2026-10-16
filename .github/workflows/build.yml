@@ -23,6 +23,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Mencari folder proyek Gradle secara otomatis (root repo atau subfolder),
+      # jadi build tetap jalan walaupun file proyek ada di dalam folder.
+      - name: Locate Gradle project
+        id: proj
+        run: |
+          f=$(find . -maxdepth 4 \( -name settings.gradle.kts -o -name settings.gradle \) -not -path './.git/*' | head -n 1)
+          if [ -z "$f" ]; then
+            echo "::error::settings.gradle.kts tidak ditemukan di repo. Pastikan isi NetChan.zip (settings.gradle.kts, build.gradle.kts, folder app/) ikut di-push."
+            echo "Isi repo:"; find . -maxdepth 3 -not -path './.git/*' | head -n 60
+            exit 1
+          fi
+          dir=$(dirname "$f")
+          echo "Proyek Gradle ditemukan di: $dir"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
@@ -35,13 +50,16 @@ jobs:
           gradle-version: 8.9
 
       - name: Build Debug & Release APK
+        working-directory: ${{ steps.proj.outputs.dir }}
         run: gradle assembleDebug assembleRelease --stacktrace
 
       - name: Rename APK
+        env:
+          PROJECT_DIR: ${{ steps.proj.outputs.dir }}
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/Net-Chan-debug.apk
-          cp app/build/outputs/apk/release/app-release.apk dist/Net-Chan-release.apk
+          cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" dist/Net-Chan-debug.apk
+          cp "$PROJECT_DIR/app/build/outputs/apk/release/app-release.apk" dist/Net-Chan-release.apk
           ls -lh dist
 
       - name: Upload Net-Chan-debug
